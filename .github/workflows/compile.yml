@@ -8,6 +8,9 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
     - name: Install Dependencies
       run: |
         sudo apt-get update
@@ -38,13 +41,14 @@ jobs:
 
     - name: Prepare Kernel Configuration
       run: |
+        zcat $GITHUB_WORKSPACE/config.gz > $GITHUB_WORKSPACE/kernel/.config
         cd $GITHUB_WORKSPACE/kernel
-        make ARCH=arm64 kvim3_defconfig
-
+        make ARCH=arm64 olddefconfig
+        make ARCH=arm64 modules_prepare
 
     - name: Compile Module
       env:
-        PATH: ${{ github.workspace }}/clang/bin:${{ binfmt }}/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        PATH: ${{ github.workspace }}/clang/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       run: |
         cd $GITHUB_WORKSPACE/driver
         make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KSRC=$GITHUB_WORKSPACE/kernel modules
