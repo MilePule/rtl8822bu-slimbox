@@ -1,0 +1,55 @@
+name: Compile Android TV Driver
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y bc build-essential libelf-dev libssl-dev bison flex git
+
+    - name: Download Google Android Clang 11
+      run: |
+        mkdir -p $GITHUB_WORKSPACE/clang
+        cd $GITHUB_WORKSPACE/clang
+        wget https://googlesource.com
+        tar -xzf clang-r383902.tar.gz
+
+    - name: Download Amlogic Android 11 Kernel Source
+      run: |
+        cd $GITHUB_WORKSPACE
+        git clone --depth 1 -b r-amlogic-sync https://github.com kernel
+        cd kernel
+        git fetch --depth 1 origin 5e4be9bdfb29e599b50b5514f08e4ba03e2261fb
+        git checkout FETCH_HEAD
+
+    - name: Download Realtek Driver Source
+      run: |
+        cd $GITHUB_WORKSPACE
+        git clone https://github.com driver
+        cd driver
+        sed -i 's/CONFIG_PLATFORM_I386_PC = y/CONFIG_PLATFORM_I386_PC = n/g' Makefile
+        sed -i 's/CONFIG_PLATFORM_ARM64_RPI = n/CONFIG_PLATFORM_ARM64_RPI = y/g' Makefile
+
+    - name: Prepare Kernel Configuration
+      run: |
+        cd $GITHUB_WORKSPACE/kernel
+        make ARCH=arm64 defconfig
+
+    - name: Compile Module
+      env:
+        PATH: ${{ github.workspace }}/clang/bin:${{ binfmt }}/usr/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      run: |
+        cd $GITHUB_WORKSPACE/driver
+        make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- CC=clang CLANG_TRIPLE=aarch64-linux-gnu- KSRC=$GITHUB_WORKSPACE/kernel modules
+
+    - name: Upload Compiled Driver
+      uses: actions/upload-artifact@v4
+      with:
+        name: 88x2bu-driver
+        path: driver/88x2bu.ko
