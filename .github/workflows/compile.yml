@@ -39,7 +39,8 @@ jobs:
     - name: Prepare Kernel Configuration
       run: |
         cd $GITHUB_WORKSPACE/kernel
-        make ARCH=arm64 defconfig
+        make ARCH=arm64 kvim3_defconfig
+
 
     - name: Compile Module
       env:
